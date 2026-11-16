@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fbf7f5">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Painel Admin | Carla Modas</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin.css">
+  <script src="/config.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+  <script src="/cloud.js" defer></script>
+  <script src="/admin.js" defer></script>
+</head>
+<body>
+  <div id="busy" class="busy" role="status" aria-live="polite" hidden>Salvando alterações…</div>
+  <div id="notice" class="notice" role="status" aria-live="polite"></div>
+  <section class="auth-screen" id="authScreen" hidden>
+    <div class="auth-decor"><span>✳</span><h1>carla<span>.</span></h1><p>Um espaço especial para cuidar da sua vitrine.</p><small>MODAS · VESTE VOCÊ</small></div>
+    <div class="auth-form-wrap">
+      <div class="auth-card">
+        <p class="kicker">ÁREA RESTRITA</p>
+        <h2>Bem-vinda <em>de volta.</em></h2>
+        <p>Entre com sua conta administrativa para gerenciar a Carla Modas.</p>
+        <form id="loginForm" autocomplete="on">
+          <label>E-mail<input type="email" id="loginEmail" name="email" placeholder="seuemail@exemplo.com" autocomplete="username" required></label>
+          <label>Senha<input type="password" id="loginPassword" name="password" placeholder="Sua senha" autocomplete="current-password" required minlength="6"></label>
+          <button type="submit" class="btn primary" id="loginButton">Entrar no painel <span>→</span></button>
+        </form>
+        <p class="form-error" id="loginError" role="alert" hidden></p>
+        <a href="/" class="back-link">← Voltar ao catálogo</a>
+      </div>
+    </div>
+  </section>
+  <section class="setup-screen" id="setupScreen" hidden>
+    <div class="setup-card"><span class="setup-flower">✿</span><p class="kicker">CONFIGURAÇÃO NECESSÁRIA</p><h1>Vamos conectar a Carla Modas.</h1><p>O painel está criado, mas ainda precisa do projeto Supabase e das políticas de acesso.</p>
+      <ol><li>Execute o arquivo <code>supabase/carla_modas.sql</code> no Supabase do Sex Shop.</li><li>Preencha <code>config.js</code> com a URL e a chave <strong>publishable</strong> do mesmo projeto.</li><li>Crie o usuário em Supabase Auth e autorize-o na tabela <code>carla_admin_users</code>.</li></ol>
+      <a class="btn primary" href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer">Abrir Supabase ↗</a><a class="back-link" href="/">← Catálogo</a>
+    </div>
+  </section>
+  <div class="admin-layout" id="adminLayout" hidden>
+    <aside class="sidebar">
+      <a class="sidebar-brand" href="/"><span class="brand-script">carla<span>.</span></span><span class="brand-small">M O D A S</span></a>
+      <div class="workspace-label">PAINEL DE GERENCIAMENTO</div>
+      <nav class="sidebar-nav" aria-label="Áreas administrativas">
+        <button data-page="overview" class="nav-item active"><span>◫</span> Visão geral</button>
+        <button data-page="products" class="nav-item"><span>▣</span> Produtos</button>
+        <button data-page="categories" class="nav-item"><span>⊞</span> Categorias</button>
+        <button data-page="appearance" class="nav-item"><span>✿</span> Identidade da loja</button>
+        <button data-page="tools" class="nav-item"><span>↥</span> Exportar dados</button>
+      </nav>
+      <div class="sidebar-bottom"><div class="sidebar-help"><strong>♡ Sua vitrine, do seu jeito.</strong><span>As mudanças são publicadas após salvar.</span></div><a class="public-link" href="/" target="_blank" rel="noopener noreferrer">↗ Abrir a vitrine</a><button id="logoutButton" class="logout-button">Sair da conta →</button></div>
+    </aside>
+    <div class="admin-main">
+      <header class="topbar"><div><p class="kicker" id="pageKicker">GERENCIAMENTO</p><h1 id="pageTitle">Visão geral</h1></div><div class="topbar-actions"><a href="/" target="_blank" rel="noopener noreferrer" class="preview-link">↗ Ver site</a><div class="avatar">CM</div></div></header>
+      <main id="pageContent" class="page-content" tabindex="-1"></main>
+    </div>
+    <nav class="bottom-tabs" aria-label="Painel no celular"><button data-page="overview" class="active"><span>◫</span> Início</button><button data-page="products"><span>▣</span> Produtos</button><button data-page="categories"><span>⊞</span> Categorias</button><button data-page="appearance"><span>✿</span> Loja</button><button data-page="tools"><span>↥</span> Dados</button></nav>
+  </div>
+  <dialog id="editorDialog" class="editor-dialog" aria-labelledby="editorTitle">
+    <div class="editor-top"><div><span class="kicker" id="editorKicker">CADASTRO</span><h2 id="editorTitle">Novo produto</h2></div><button type="button" class="round-close" id="editorClose" aria-label="Fechar editor">×</button></div>
+    <div id="editorBody"></div>
+  </dialog>
+</body>
+</html>
