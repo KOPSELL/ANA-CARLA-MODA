@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 760">
+<defs><linearGradient id="b" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#f9f1ef"/><stop offset="1" stop-color="#ead1d7"/></linearGradient></defs>
+<rect width="600" height="760" fill="url(#b)"/>
+<circle cx="495" cy="128" r="185" fill="#fff" opacity=".2"/>
+<circle cx="115" cy="667" r="220" fill="#b68a9a" opacity=".13"/>
+<path d="M135 340c58-68 205-94 312-20M166 439c88 60 191 72 280 15" fill="none" stroke="#b78595" stroke-width="2" opacity=".45"/>
+<text x="300" y="380" font-family="Georgia,serif" font-size="76" letter-spacing="-4" text-anchor="middle" fill="#865764">carla.</text>
+<text x="300" y="417" font-family="Arial,sans-serif" font-size="17" letter-spacing="10" text-anchor="middle" fill="#9c6f7e">M O D A S</text>
+<text x="300" y="462" font-family="Georgia,serif" font-size="20" text-anchor="middle" fill="#ac8390">veste você ♡</text>
+</svg>
