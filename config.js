@@ -6,5 +6,5 @@
  */
 window.CARLA_SUPABASE_CONFIG = Object.freeze({
   url: "https://feloxrkstqptipfxrmkf.supabase.co",
-  publishableKey: ""
+  publishableKey: "sb_publishable_h2TgIb-kj3PvmWFR7H1f-Q_zw-MydM5"
 });
