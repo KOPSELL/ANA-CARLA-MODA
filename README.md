@@ -42,8 +42,36 @@ O arquivo `config.js` contém somente o identificador do Supabase e a **publisha
 - WhatsApp: 55 54 98429-0397.
 - Fotos e logo reais: precisam ser enviados pelo painel.
 
+## Novo: sacola, finalização e histórico WhatsApp
+
+Na vitrine:
+- Ao tocar em uma peça e **Adicionar à seleção**, abre a sacola com **Continuar comprando** e **Finalizar pedido**.
+- A sacola fica visível em um botão fixo no celular, mostrando quantidade e valores.
+- É possível aumentar/diminuir quantidades e remover produtos com um toque.
+- A finalização tem nome opcional, modalidade de recebimento (combinar, entrega, retirada) e observações.
+- Ao tocar em **Enviar pelo WhatsApp**, a função Supabase **carla-order** valida disponibilidade, estoque e preços atuais, registra uma intenção e devolve o resumo e a referência de atendimento CM-00001, CM-00002 etc.
+- A mensagem gerada contém nomes, quantidades, tamanhos, valores unitários, subtotais, total das peças com preço e indicação clara quando há valores sob consulta.
+- O cliente precisa tocar em enviar no WhatsApp. Abrir o aplicativo **não garante** que a mensagem foi enviada ou recebida.
+- Se o banco estiver temporariamente indisponível, o cliente ainda pode abrir o WhatsApp com o resumo local, mas o histórico não será gravado.
+- O estoque não é descontado automaticamente quando alguém abre o WhatsApp.
+
+No painel administrativo:
+- Menu **Pedidos** com histórico e status **WhatsApp aberto**, **Em atendimento**, **Concluído** e **Cancelado**.
+- Detalhes de cada pedido, informações do cliente quando informadas, produtos, tamanhos, preços, observações e código.
+- Notas internas, busca por pedido/cliente/produto, filtro por situação e exportação CSV.
+- Em **Produtos → Disponibilidade**, é possível marcar uma peça como esgotada, disponível sem controle ou definir quantidade exata em poucos toques.
+- A seção de produtos é exibida como cartões no celular para evitar tabelas horizontais.
+
+Segurança:
+- A tabela **carla_order_intents** fica sem acesso público direto (RLS, sem GRANT ao anon); apenas as funções backend podem gravar ou ler o histórico.
+- **carla-order** jamais aceita preços enviados pelo navegador; usa os valores e estoque atuais no banco.
+- **carla-admin-api** exige sessão administrativa para ler histórico e editar status/nota.
+- Não confundir histórico de abertura do WhatsApp com faturamento, venda confirmada ou envio efetivo de mensagens.
+
+O esquema complementar está em **supabase/carla_orders.sql** e já foi aplicado no projeto Supabase existente. As funções **carla-order** e **carla-admin-api** também foram implantadas.
+
 ## Limites
 
-A Carla Modas é uma vitrine de **consulta por WhatsApp**, não um e-commerce com checkout nem um ERP financeiro. Há controle de estoque no cadastro, mas ele não é decrementado automaticamente ao enviar mensagens.
+A Carla Modas possui **finalização assistida pelo WhatsApp**, não um checkout com cobrança nem um ERP financeiro. Há controle de estoque no cadastro, mas ele não é decrementado automaticamente ao enviar mensagens.
 
 Para novos ambientes, o SQL inicial encontra-se em `supabase/carla_modas.sql`. Esse arquivo corresponde à **estrutura inicial anterior à migração para senha única** e não deve ser reexecutado no projeto atual, porque contém as antigas políticas de edição via Supabase Auth. O sistema atual usa sessões gerenciadas pela função `supabase/functions/carla-admin-api/index.ts`. Uma nova instalação deve reproduzir também as tabelas de credenciais/sessões e as restrições finais de escrita descritas aqui.
