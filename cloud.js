@@ -46,6 +46,7 @@
       price: product.price == null ? null : Number(product.price),
       compareAtPrice: product.compare_at_price == null ? null : Number(product.compare_at_price),
       image: product.image_url || "/product-placeholder.svg",
+      hasRealImage: Boolean(product.image_url),
       gallery: product.gallery || [],
       sizes: product.sizes || [],
       colors: product.colors || [],
