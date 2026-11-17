@@ -51,6 +51,12 @@ window.CARLA_CATALOG = {
       name: "Calcinhas Avulsas",
       description: "Essenciais todos os dias",
       image: "https://images.unsplash.com/photo-1551232864-3f0890e580d9?auto=format&fit=crop&w=1000&q=82"
+    },
+    {
+      id: "perfumes",
+      name: "Perfumes",
+      description: "Sua fragrância favorita",
+      image: "/product-placeholder.svg"
     }
   ],
   products: [
