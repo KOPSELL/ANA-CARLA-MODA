@@ -7,19 +7,35 @@
  const cfg=window.CARLA_SUPABASE_CONFIG||{};
  const base=String(cfg.url||"").replace(/\/$/,"");
  const endpoint=base+"/functions/v1/carla-admin-api";
- const sessionKey="carla_admin_session_v2";
- function loadToken(){
-   try {
-     const item=JSON.parse(sessionStorage.getItem(sessionKey)||"null");
-     if(item && typeof item.token==="string" && Date.parse(item.expiresAt)>Date.now())return item.token;
+ const sessionKey="carla_admin_session_v3";
+ const oldSessionKey="carla_admin_session_v2";
+ function readToken(storage,key){
+   try{
+     const item=JSON.parse(storage.getItem(key)||"null");
+     if(item && typeof item.token==="string" && /^[a-f0-9]{64}$/.test(item.token) && Date.parse(item.expiresAt)>Date.now())return item.token;
+     storage.removeItem(key);
    }catch{}
-   try{sessionStorage.removeItem(sessionKey);}catch{}
    return null;
  }
- function setToken(token,expiresAt){
-   try{sessionStorage.setItem(sessionKey,JSON.stringify({token,expiresAt}));}catch{}
+ function loadToken(){
+   // Senha nunca é armazenada; apenas o token temporário de sessão.
+   return readToken(localStorage,sessionKey) ||
+          readToken(sessionStorage,sessionKey) ||
+          readToken(sessionStorage,oldSessionKey);
  }
- function forgetToken(){try{sessionStorage.removeItem(sessionKey);}catch{}}
+ function forgetToken(){
+   try{localStorage.removeItem(sessionKey);}catch{}
+   try{sessionStorage.removeItem(sessionKey);}catch{}
+   try{sessionStorage.removeItem(oldSessionKey);}catch{}
+ }
+ function setToken(token,expiresAt,rememberDevice){
+   forgetToken();
+   const info=JSON.stringify({token,expiresAt});
+   if(rememberDevice){
+     try{localStorage.setItem(sessionKey,info);return;}catch{}
+   }
+   try{sessionStorage.setItem(sessionKey,info);}catch{}
+ }
  async function call(payload,tokenOverride){
    const token=tokenOverride===undefined?loadToken():tokenOverride;
    let response;
@@ -68,11 +84,11 @@
  }
  const admin={
    auth:{
-     async signInWithPassword({password}){
+     async signInWithPassword({password,rememberDevice=false}){
        try{
          if(typeof password!=="string"||!password)throw Error("Digite a senha.");
-         const data=await call({op:"login",password},null);
-         setToken(data.token,data.expiresAt);
+         const data=await call({op:"login",password,remember_device:rememberDevice===true},null);
+         setToken(data.token,data.expiresAt,rememberDevice===true);
          return {data:{session:{access_token:data.token,expires_at:Math.floor(Date.parse(data.expiresAt)/1000)}},error:null};
        }catch(error){return{data:null,error};}
      },
