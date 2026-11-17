@@ -5,6 +5,6 @@
  * service_role, sb_secret, senha ou credenciais privilegiadas aqui.
  */
 window.CARLA_SUPABASE_CONFIG = Object.freeze({
-  url: "",
+  url: "https://zufmqizfodbifuqimqbo.supabase.co",
   publishableKey: ""
 });
