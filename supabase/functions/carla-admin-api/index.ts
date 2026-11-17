@@ -31,6 +31,10 @@ const schemas:Record<string,{fields: string[]; readable: string[]}> = {
  carla_settings:{
   fields:["store_name","tagline","whatsapp","instagram","announcement","hero_title","hero_subtitle","hero_image_url","logo_url","about_text","address"],
   readable:["id","store_name","tagline","whatsapp","instagram","announcement","hero_title","hero_subtitle","hero_image_url","logo_url","about_text","address","updated_at"]
+ },
+ carla_order_intents:{
+  fields:["status","internal_notes"],
+  readable:["id","number","customer_name","customer_note","fulfillment","items","total","missing_prices","item_count","status","internal_notes","created_at","updated_at"]
  }
 };
 function makeHeaders(req:Request) {
@@ -91,6 +95,11 @@ function validate(table:string, values:unknown, op:string){
    if(result.price!==undefined && result.price!==null && (!Number.isFinite(result.price)||Number(result.price)<0||Number(result.price)>1000000))fail("Preço inválido.");
    if(result.stock!==undefined && result.stock!==null && (!Number.isInteger(result.stock)||Number(result.stock)<0))fail("Estoque inválido.");
  }
+ if(table==="carla_order_intents") {
+   if(op!=="update")fail("Os pedidos só podem ter status e observações alterados.");
+   if(result.status!==undefined && !["whatsapp_aberto","em_atendimento","concluido","cancelado"].includes(String(result.status)))fail("Status inválido.");
+   if(result.internal_notes!==undefined && (typeof result.internal_notes!=="string"||result.internal_notes.length>1000))fail("Observação muito longa.");
+ }
  if(table==="carla_settings" && op==="insert")fail("Não é possível criar outra loja.");
  return result;
 }
@@ -122,6 +131,7 @@ async function queryRecords(payload:Payload){
   return r.data;
  }
  if(op==="insert"){
+  if(table==="carla_order_intents")fail("Não é possível criar pedidos pelo painel.");
   const record=validate(table,payload.values,op);
   if(table==="carla_settings")fail("Operação inválida.");
   const r=await db.from(table).insert(record).select(schema.readable.join(","));
@@ -134,6 +144,7 @@ async function queryRecords(payload:Payload){
   const r=await q.select(schema.readable.join(","));
   if(r.error)throw r.error;return r.data;
  }
+ if(table==="carla_order_intents")fail("Os pedidos não podem ser excluídos pelo painel.");
  if(table==="carla_settings")fail("Não é possível excluir as configurações.");
  const r=await db.from(table).delete().eq("id",id).select("id");
  if(r.error)throw r.error;return r.data;
