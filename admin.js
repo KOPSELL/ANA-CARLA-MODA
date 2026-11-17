@@ -62,7 +62,8 @@
   }
   async function checkAdmin(){
     const {data:{user},error}=await state.db.auth.getUser();
-    if(error||!user)return false;
+    if(error)throw error;
+    if(!user)throw Error("Sessão inválida. Digite sua senha novamente.");
     state.me=user;state.role="owner";
     setScreen("adminLayout");await refresh();page(state.page);
     return true;
