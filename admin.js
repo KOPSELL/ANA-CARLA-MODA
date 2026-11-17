@@ -394,7 +394,7 @@
       byId("loginError").hidden=true;
       const button=byId("loginButton");button.disabled=true;button.textContent="Entrando…";
       try{
-        const phone = "+5554984290397";
+        const phone = String(window.CARLA_SUPABASE_CONFIG?.adminPhone || "+5554984290397");
         const {error}=await state.db.auth.signInWithPassword({phone,password:byId("loginPassword").value});
         if(error)throw error;
         await checkAdmin();
