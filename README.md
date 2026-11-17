@@ -32,15 +32,15 @@ https://github.com/KOPSELL/ANA-CARLA-MODA
    insert into public.carla_admin_users (user_id,role)
    select id, 'owner'
    from auth.users
-   where email = 'EMAIL_EXATO_DO_USUARIO'
+   where phone = '5554984290397'
    on conflict (user_id) do update set role='owner';
    ```
    
-   Certifique-se de que a consulta localizou **exatamente uma conta**. Nunca use o e-mail de um cliente sem sua permissão.
+   Confirme o formato de telefone salvo em `auth.users`: o Supabase normalmente armazena sem o sinal `+`. Antes de autorizar, execute `select id, phone, phone_confirmed_at from auth.users where phone like '%984290397';` para localizar a conta correta. Certifique-se de que a consulta localizou **exatamente uma conta**. Nunca use o e-mail de um cliente sem sua permissão.
 5. Importe o repositório para Vercel com **Other** (site estático, sem build command), publique e abra `/admin` para entrar no painel.
 
 ## Funcionalidades do painel
-- Entrar com e-mail e senha via Supabase Auth, somente usuários autorizados.
+- Entrar apenas com a senha na interface, autenticando internamente via telefone e senha do Supabase Auth, somente usuários autorizados. Recomendamos MFA e limites de tentativas.
 - Visão geral com totais de produtos, publicados, categorias e sem estoque.
 - Cadastrar, editar, ocultar e excluir produtos.
 - Categoria, SKU, nome, descrição, preço, preço antigo, ordem, destaque, cores, tamanhos e estoque.
@@ -64,3 +64,6 @@ O painel não possui checkout, gestão de pedidos recebidos nem cálculo de fatu
 - Somente os usuários de `carla_admin_users` podem alterar os registros e enviar fotos.
 - O Sex Shop não é alterado, mas ainda compartilha o mesmo banco/projeto Supabase; não é isolamento de infraestrutura. Se precisar isolamento completo, crie outro projeto.
 - Cuidado ao excluir produtos ou categorias: exclusões são permanentes. Faça backup antes de alterações grandes.
+
+## Login somente por senha
+A tela admin solicita apenas a senha. Internamente usa o telefone da loja (+5554984290397) com a autenticação do Supabase, sem senha no código-fonte. Para funcionar: habilite Phone no projeto, crie/confirme uma conta Auth desse telefone e autorize o user_id em carla_admin_users. O telefone funciona apenas como identificador de login, não implica envio de WhatsApp ou SMS pelo site ao autenticar com senha. Não coloque a senha em código JavaScript, SQL público nem GitHub.
