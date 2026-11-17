@@ -1,69 +1,49 @@
 # Carla Modas ♡
 
-Vitrine feminina + painel administrativo responsivo, integrada ao Supabase do Sex Shop **somente na infraestrutura**. Todos os dados da Carla ficam em tabelas e bucket próprios, com políticas RLS exclusivas.
+Vitrine feminina + painel administrativo por **senha única**. Não é necessário cadastrar usuário na área Authentication do Supabase.
 
-## Repositório
-https://github.com/KOPSELL/ANA-CARLA-MODA
+## Repositório e projeto
 
-## Projeto Supabase correto
-- Project ID: `feloxrkstqptipfxrmkf`
-- Project URL: `https://feloxrkstqptipfxrmkf.supabase.co`
-- REST API: `https://feloxrkstqptipfxrmkf.supabase.co/rest/v1/`
+- GitHub: https://github.com/KOPSELL/ANA-CARLA-MODA
+- Supabase compartilhado com o Sex Shop: `feloxrkstqptipfxrmkf`.
+- As tabelas, fotos, políticas e função administrativa da Carla são exclusivas: prefixo `carla_`, bucket `carla-modas` e Edge Function `carla-admin-api`.
 
-**IMPORTANTE:** A URL não é suficiente para ativar o banco. Ainda é preciso adicionar a chave pública e executar o SQL.
+## Painel administrativo
 
-## Ativação (na ordem)
+Entre no catálogo, desça até o rodapé e toque na **engrenagem**. A tela de login exibe somente o campo **Senha**.
 
-1. Abra o SQL Editor do projeto `feloxrkstqptipfxrmkf` e execute todo o arquivo `supabase/carla_modas.sql`. Ele cria tabelas carla_categories, carla_products, carla_settings, carla_admin_users, bucket carla-modas e as políticas de isolamento.
-2. No mesmo projeto, vá em **Project Settings > API Keys**. Copie apenas a **publishable key** (ou a **anon key pública**, conforme a versão do painel). Atualize `config.js`:
-   
-   ```javascript
-   window.CARLA_SUPABASE_CONFIG = Object.freeze({
-     url: "https://feloxrkstqptipfxrmkf.supabase.co",
-     publishableKey: "SUA_CHAVE_PUBLICA"
-   });
-   ```
+O painel oferece:
+- visão geral dos produtos e da disponibilidade;
+- criação, alteração, ocultação e exclusão de produtos;
+- foto principal, galeria, preços, preços anteriores, referência, estoque, tamanhos, cores e ordem;
+- criação, edição e exclusão de categorias com fotos;
+- identidade da loja (logo, banner, WhatsApp, Instagram, textos);
+- exportação CSV e backup JSON;
+- navegação responsiva no celular.
 
-   Nunca use a chave secreta, `service_role`, `sb_secret_...` ou uma senha administrativa no frontend.
-3. Em **Supabase > Authentication > Users**, crie a conta administrativa da Carla. **Não habilite cadastro de administradores pelo site**.
-4. Autorize a conta no banco com este SQL **após substituír o e-mail**:
-   
-   ```sql
-   insert into public.carla_admin_users (user_id,role)
-   select id, 'owner'
-   from auth.users
-   where phone = '5554984290397'
-   on conflict (user_id) do update set role='owner';
-   ```
-   
-   Confirme o formato de telefone salvo em `auth.users`: o Supabase normalmente armazena sem o sinal `+`. Antes de autorizar, execute `select id, phone, phone_confirmed_at from auth.users where phone like '%984290397';` para localizar a conta correta. Certifique-se de que a consulta localizou **exatamente uma conta**. Nunca use o e-mail de um cliente sem sua permissão.
-5. Importe o repositório para Vercel com **Other** (site estático, sem build command), publique e abra `/admin` para entrar no painel.
+## Como funciona a segurança
 
-## Funcionalidades do painel
-- Entrar apenas com a senha na interface, autenticando internamente via telefone e senha do Supabase Auth, somente usuários autorizados. Recomendamos MFA e limites de tentativas.
-- Visão geral com totais de produtos, publicados, categorias e sem estoque.
-- Cadastrar, editar, ocultar e excluir produtos.
-- Categoria, SKU, nome, descrição, preço, preço antigo, ordem, destaque, cores, tamanhos e estoque.
-- Foto principal e galeria com até seis fotos por peça.
-- Criar, editar e excluir categorias; foto, descrição, ordem e visibilidade.
-- Identidade da loja: logo, imagem principal, textos, nome, WhatsApp, Instagram, descrição e localização.
-- Exportação de produtos para CSV e cópia de catálogo em JSON.
-- Uso pelo celular, com navegação inferior e upload de fotos da galeria/câmera.
+A senha nunca é embutida em JavaScript nem em GitHub. O banco guarda apenas um hash PBKDF2 com salt, e a função do Supabase verifica a senha, limita tentativas, gera um token aleatório de sessão com validade de 8 horas e armazena apenas o hash do token. O token é guardado no `sessionStorage` do navegador. Todas as ações administrativas são autorizadas pela função, com uma lista explícita de tabelas e campos. O frontend **não** usa a service role key.
 
-O painel não possui checkout, gestão de pedidos recebidos nem cálculo de faturamento: a vitrine envia consultas para o WhatsApp da loja.
+A edição direta via chave pública está desativada pelas permissões de banco e armazenamento. A vitrine pública só pode consultar produtos/categorias ativos e configurações publicáveis. A função administrativa usa as credenciais seguras do Supabase Edge Functions, sem afetar o banco do Sex Shop.
 
-## Configurações iniciais
-- Loja: Carla Modas
-- WhatsApp: **55 54 98429-0397**
-- Categorias: Moda Fitness, Pijamas, Baby Doll Rendado, Camisolas, Sutiã Comfort, Calcinhas Avulsas.
-- Produtos cadastrados pelo SQL: os nove nomes identificáveis nos prints do catálogo anterior, com preços apenas onde legíveis, sem imagens individuais. As imagens devem ser carregadas no painel usando fotos reais.
-- Logo real: envie a imagem pelo painel **Identidade da loja > Logo oficial**. O arquivo do logo compartilhado no chat não foi enviado automaticamente ao GitHub/Supabase.
+**Atenção**: como a senha foi compartilhada na conversa, recomenda-se trocá-la para uma senha exclusiva antes de divulgar o endereço do painel. Para trocar a senha, gere um novo salt e hash PBKDF2 no servidor e atualize a linha `id=1` da tabela `carla_admin_credentials`. Nunca salve a senha em arquivo público.
 
-## Segurança
-- O catálogo público só lê categorias/produtos ativos e configurações públicas.
-- Somente os usuários de `carla_admin_users` podem alterar os registros e enviar fotos.
-- O Sex Shop não é alterado, mas ainda compartilha o mesmo banco/projeto Supabase; não é isolamento de infraestrutura. Se precisar isolamento completo, crie outro projeto.
-- Cuidado ao excluir produtos ou categorias: exclusões são permanentes. Faça backup antes de alterações grandes.
+## Publicação
 
-## Login somente por senha
-A tela admin solicita apenas a senha. Internamente usa o telefone da loja (+5554984290397) com a autenticação do Supabase, sem senha no código-fonte. Para funcionar: habilite Phone no projeto, crie/confirme uma conta Auth desse telefone e autorize o user_id em carla_admin_users. O telefone funciona apenas como identificador de login, não implica envio de WhatsApp ou SMS pelo site ao autenticar com senha. Não coloque a senha em código JavaScript, SQL público nem GitHub.
+Importe o repositório na Vercel como projeto estático (Other), sem comando de build. O `vercel.json` permite entrar em `/admin`, que corresponde ao arquivo `admin.html`.
+
+O arquivo `config.js` contém somente o identificador do Supabase e a **publishable key**, que são públicos por definição. O banco já está instalado no projeto, incluindo a senha de acesso escolhida pela loja e a Edge Function `carla-admin-api`.
+
+## Conteúdo
+
+- 6 categorias: Moda Fitness, Pijamas, Baby Doll Rendado, Camisolas, Sutiã Comfort e Calcinhas Avulsas.
+- 9 referências cadastradas com base nos prints recebidos; somente preços legíveis foram inseridos.
+- WhatsApp: 55 54 98429-0397.
+- Fotos e logo reais: precisam ser enviados pelo painel.
+
+## Limites
+
+A Carla Modas é uma vitrine de **consulta por WhatsApp**, não um e-commerce com checkout nem um ERP financeiro. Há controle de estoque no cadastro, mas ele não é decrementado automaticamente ao enviar mensagens.
+
+Para novos ambientes, o SQL inicial encontra-se em `supabase/carla_modas.sql`. Esse arquivo corresponde à **estrutura inicial anterior à migração para senha única** e não deve ser reexecutado no projeto atual, porque contém as antigas políticas de edição via Supabase Auth. O sistema atual usa sessões gerenciadas pela função `supabase/functions/carla-admin-api/index.ts`. Uma nova instalação deve reproduzir também as tabelas de credenciais/sessões e as restrições finais de escrita descritas aqui.
