@@ -4,6 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 type Payload = {
   op?: string;
   password?: string;
+  remember_device?: boolean;
   token?: string;
   table?: string;
   filters?: Record<string, unknown>;
@@ -197,7 +198,8 @@ Deno.serve(async(req)=>{
    }
    await db.from("carla_admin_credentials").update({failed_attempts:0,locked_until:null}).eq("id",1);
    const token=newToken(),hash=await shaHex(token);
-   const expiresAt=new Date(Date.now()+8*60*60*1000).toISOString();
+   const durationMs=payload.remember_device===true ? 30*24*60*60*1000 : 8*60*60*1000;
+   const expiresAt=new Date(Date.now()+durationMs).toISOString();
    const {error:sessionError}=await db.from("carla_admin_sessions").insert({token_hash:hash,expires_at:expiresAt});
    if(sessionError)throw sessionError;
    return send(req,{ok:true,token,expiresAt});
