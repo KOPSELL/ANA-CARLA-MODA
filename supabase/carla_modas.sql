@@ -215,7 +215,8 @@ values
 ('baby-doll','Baby Doll Rendado','Romance e delicadeza',30),
 ('camisolas','Camisolas','Leveza para descansar',40),
 ('sutias','Sutiã Comfort','Conforto todos os dias',50),
-('calcinhas','Calcinhas Avulsas','Essenciais femininos',60)
+('calcinhas','Calcinhas Avulsas','Essenciais femininos',60),
+('perfumes','Perfumes','Fragrâncias para todos os momentos',70)
 on conflict (slug) do nothing;
 
 -- Produtos informados por print: os textos truncados foram abreviados;
