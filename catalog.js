@@ -12,7 +12,7 @@
 window.CARLA_CATALOG = {
   store: {
     name: "Carla Modas",
-    whatsapp: "",
+    whatsapp: "5554984290397",
     instagram: ""
   },
   categories: [
