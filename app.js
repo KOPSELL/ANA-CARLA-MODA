@@ -20,9 +20,9 @@
     const value = String(input || "");
     try {
       const url = new URL(value);
-      return url.protocol === "https:" ? safeText(url.href) : "";
+      return url.protocol === "https:" ? safeText(url.href) : "/product-placeholder.svg";
     } catch (e) {
-      return "";
+      return "/product-placeholder.svg";
     }
   }
 
@@ -115,7 +115,7 @@
       '<div class="product-details"><span class="product-category">' + safeText(category ? category.name : "") + '</span>' +
         '<button class="product-name" data-view="' + safeText(product.id) + '">' + safeText(product.name) + '</button>' +
         '<span class="product-price">' + formatPrice(product.price) + '</span>' +
-        '<span class="product-hint">Imagem ilustrativa</span>' +
+        '<span class="product-hint">' + (product.hasRealImage ? "Foto da peça" : "Imagem ilustrativa") + '</span>' +
       '</div>' +
     '</article>';
   }
@@ -180,14 +180,14 @@
     const sizes = Array.isArray(product.sizes) && product.sizes.length ? product.sizes : ["Único"];
     byId("productDialogContent").innerHTML =
       '<button class="modal-close" id="modalClose" aria-label="Fechar detalhes"><svg><use href="#i-close"/></svg></button>' +
-      '<div class="modal-inner"><div class="modal-image"><img src="' + safeImage(product.image) + '" alt="Imagem ilustrativa da peça ' + safeText(product.name) + '"><small>Imagem ilustrativa</small></div>' +
+      '<div class="modal-inner"><div class="modal-image"><img src="' + safeImage(product.image) + '" alt="Imagem ilustrativa da peça ' + safeText(product.name) + '"><small>' + (product.hasRealImage ? "Foto da peça" : "Imagem ilustrativa") + '</small></div>' +
       '<div class="modal-copy"><span class="eyebrow rose">' + safeText(category ? category.name : "Carla Modas") + '</span>' +
       '<h2>' + safeText(product.name) + '</h2><span class="modal-price">' + formatPrice(product.price) + '</span>' +
       '<p>' + safeText(product.description || "Conheça mais sobre essa peça.") + '</p>' +
       '<div class="modal-options"><label>Selecione o tamanho para consultar</label><div class="size-options">' +
       sizes.map((size) => '<button class="size-option' + (size === selectedSize ? " selected" : "") + '" data-size="' + safeText(size) + '" aria-pressed="' + String(size === selectedSize) + '">' + safeText(size) + '</button>').join("") +
       '</div></div><small class="modal-footnote">Modelo ilustrativo. Confirme tamanhos, cores, valores e disponibilidade com a loja.</small>' +
-      '<button class="button button-dark modal-add" id="addToBag"><svg><use href="#i-bag"/></svg> Adicionar à minha seleção</button></div></div>';
+      '<button class="button button-dark modal-add" id="addToBag"' + (product.stock === 0 ? " disabled" : "") + '><svg><use href="#i-bag"/></svg> ' + (product.stock === 0 ? "Indisponível no momento" : "Adicionar à minha seleção") + '</button></div></div>';
     byId("productDialog").showModal();
   }
 
@@ -207,7 +207,8 @@
       return;
     }
     if (event.target.closest("#addToBag")) {
-      if (!productById(selectedProduct)) return;
+      const chosen = productById(selectedProduct);
+      if (!chosen || chosen.stock === 0) return;
       const existing = bag.find((item) => item.id === selectedProduct && item.size === selectedSize);
       if (existing) existing.qty = Math.min(99, existing.qty + 1);
       else bag.push({ id: selectedProduct, size: selectedSize, qty: 1 });
