@@ -2,7 +2,7 @@
   "use strict";
   const $ = (selector,root=document) => root.querySelector(selector);
   const byId = (id) => document.getElementById(id);
-  const state = {db:null,me:null,role:null,page:"overview",products:[],categories:[],settings:null,query:"",filter:"all",sort:"recent"};
+  const state = {db:null,me:null,role:null,page:"overview",products:[],categories:[],settings:null,orders:[],query:"",filter:"all",sort:"recent",orderQuery:"",orderFilter:"all"};
   let toastTimer;
   const esc = (v) => String(v==null?"":v).replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const arr = (v) => Array.isArray(v)?v:[];
@@ -72,11 +72,13 @@
     const queries=await Promise.all([
       state.db.from("carla_categories").select("*").order("sort_order",{ascending:true}).order("name",{ascending:true}),
       state.db.from("carla_products").select("*").order("sort_order",{ascending:true}).order("created_at",{ascending:false}),
-      state.db.from("carla_settings").select("*").eq("id",1).maybeSingle()
+      state.db.from("carla_settings").select("*").eq("id",1).maybeSingle(),
+      state.db.from("carla_order_intents").select("*").order("created_at",{ascending:false})
     ]);
     state.categories=result(queries[0])||[];
     state.products=result(queries[1])||[];
     state.settings=result(queries[2])||{};
+    state.orders=result(queries[3])||[];
   }
   function page(next){
     state.page=next;
@@ -84,11 +86,12 @@
       button.classList.toggle("active",button.dataset.page===next);
       button.setAttribute("aria-current",button.dataset.page===next?"page":"false");
     });
-    const titles={overview:["VISÃO GERAL","Sua vitrine"],products:["SEU CATÁLOGO","Produtos"],categories:["ORGANIZE SUA LOJA","Categorias"],appearance:["PERSONALIZE","Identidade da loja"],tools:["DADOS DA LOJA","Exportar dados"]};
+    const titles={overview:["VISÃO GERAL","Sua vitrine"],products:["SEU CATÁLOGO","Produtos"],orders:["PEDIDOS INICIADOS","Pedidos WhatsApp"],categories:["ORGANIZE SUA LOJA","Categorias"],appearance:["PERSONALIZE","Identidade da loja"],tools:["DADOS DA LOJA","Exportar dados"]};
     const [subtitle,title]=titles[next]||titles.overview;
     byId("pageTitle").textContent=title;byId("pageKicker").textContent=subtitle;
     if(next==="overview")renderOverview();
     else if(next==="products")renderProducts();
+    else if(next==="orders")renderOrders();
     else if(next==="categories")renderCategories();
     else if(next==="appearance")renderAppearance();
     else if(next==="tools")renderTools();
@@ -107,7 +110,7 @@
       '<section class="stats" aria-label="Indicadores do catálogo">'+
       metric("▣",state.products.length,"Produtos cadastrados")+
       metric("✳",countActive,"Peças publicadas")+
-      metric("⊞",state.categories.length,"Categorias")+
+      metric("♧",state.orders.length,"Pedidos iniciados")+
       metric("◌",withoutStock,"Sem estoque")+
       '</section>'+
       '<section class="panel"><div class="panel-heading"><div><h2>Últimos produtos</h2><p>Gerencie suas peças com poucos toques.</p></div><button class="btn light small" id="seeAllProducts">Ver todos →</button></div>'+
@@ -125,20 +128,38 @@
   }
   function metric(icon,value,label){return '<div class="stat"><div class="stat-icon">'+icon+'</div><div class="stat-value">'+value+'</div><div class="stat-label">'+label+'</div></div>';}
   function emptyState(title,description){return '<div class="data-empty"><span>✿</span><h3>'+esc(title)+'</h3><p>'+esc(description)+'</p></div>';}
+  function stockLabel(p){
+    return p.stock===0?"Esgotado":p.stock==null?"Disponível · sem limite":p.stock+" disponível(is)";
+  }
+  function productActions(p) {
+    return '<div class="row-actions">'+
+      '<button data-edit-product="'+esc(p.id)+'">Editar</button>'+
+      '<button data-stock-product="'+esc(p.id)+'">Disponibilidade</button>'+
+      '<button data-toggle-product="'+esc(p.id)+'">'+(p.active?"Ocultar":"Publicar")+'</button>'+
+      '</div>';
+  }
   function productsTable(items){
-    return '<div class="table-scroll"><table class="data-table"><thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+
-      items.map((p)=>{
-        const category=activeCategory(p.category_id);
-        return '<tr><td><span class="item-name"><img class="thumb" src="'+safeImg(p.image_url)+'" alt=""><span>'+esc(p.name)+'</span></span></td>'+
+    const rows = items.map((p)=>{
+      const category=activeCategory(p.category_id);
+      return '<tr><td><span class="item-name"><img class="thumb" src="'+safeImg(p.image_url)+'" alt=""><span>'+esc(p.name)+'</span></span></td>'+
         '<td>'+esc(category?.name||"Sem categoria")+'</td><td>'+esc(money(p.price))+'</td>'+
-        '<td>'+(p.stock==null?"Livre":p.stock)+'</td>'+
-        '<td><span class="status-pill'+(!p.active?" off":p.stock===0?" warn":"")+'">'+(!p.active?"Oculto":p.stock===0?"Sem estoque":"Publicado")+'</span></td>'+
-        '<td><div class="row-actions"><button data-edit-product="'+esc(p.id)+'">Editar</button><button data-toggle-product="'+esc(p.id)+'">'+(p.active?"Ocultar":"Publicar")+'</button></div></td></tr>';
-      }).join("")+'</tbody></table></div>';
+        '<td>'+esc(stockLabel(p))+'</td>'+
+        '<td><span class="status-pill'+(!p.active?" off":p.stock===0?" warn":"")+'">'+(!p.active?"Oculto":p.stock===0?"Esgotado":"Publicado")+'</span></td>'+
+        '<td>'+productActions(p)+'</td></tr>';
+    }).join("");
+    const cards = items.map(p=>
+      '<article class="product-mini-card"><img class="thumb" src="'+safeImg(p.image_url)+'" alt=""><div class="product-mini-main">'+
+      '<strong>'+esc(p.name)+'</strong><small>'+esc(activeCategory(p.category_id)?.name||"")+'</small>'+
+      '<div class="mini-values"><b>'+esc(money(p.price))+'</b><span>'+esc(stockLabel(p))+'</span></div>'+
+      '<small>'+(!p.active?"Oculto da loja":p.stock===0?"Esgotado":"Publicado")+'</small>'+
+      productActions(p)+'</div></article>').join("");
+    return '<div class="product-table-desktop"><div class="table-scroll"><table class="data-table"><thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'+
+      '<div class="product-mobile-list">'+cards+'</div>';
   }
   function wireTableActions(){
     document.querySelectorAll("[data-edit-product]").forEach((button)=>button.addEventListener("click",()=>openProduct(button.dataset.editProduct)));
     document.querySelectorAll("[data-toggle-product]").forEach((button)=>button.addEventListener("click",()=>toggleProduct(button.dataset.toggleProduct)));
+    document.querySelectorAll("[data-stock-product]").forEach((button)=>button.addEventListener("click",()=>openStockEditor(button.dataset.stockProduct)));
   }
   function renderProducts(){
     const cats=[{id:"all",name:"Todas as categorias"},...state.categories];
@@ -174,6 +195,38 @@
     const success=await operation(async()=>{result(await state.db.from("carla_products").update({active:!item.active}).eq("id",id).select("id"));await refresh();},"Visibilidade atualizada!");
     if(success)page(state.page);
   }
+  function openStockEditor(id) {
+    const product=state.products.find(p=>p.id===id);
+    if(!product)return;
+    const mode=product.stock===0?"out":product.stock===null?"unlimited":"quantity";
+    openEditor("Disponibilidade","AJUSTE RÁPIDO",
+      '<form id="stockForm">'+
+      '<p class="hint"><strong>'+esc(product.name)+'</strong><br>Deixe a peça disponível, marque como esgotada ou informe o estoque existente.</p>'+
+      '<label class="field">Situação do produto<select id="stockMode">'+
+      '<option value="unlimited"'+(mode==="unlimited"?" selected":"")+'>Disponível (sem controle de quantidade)</option>'+
+      '<option value="quantity"'+(mode==="quantity"?" selected":"")+'>Disponível (com quantidade)</option>'+
+      '<option value="out"'+(mode==="out"?" selected":"")+'>Esgotado</option></select></label>'+
+      '<label class="field" id="stockQuantityWrap" style="margin-top:18px">Quantidade disponível<input type="number" min="1" max="999999" id="stockQuantity" value="'+(product.stock>0?product.stock:1)+'"></label>'+
+      '<div class="editor-actions"><button type="button" class="btn outline" id="cancelStock">Voltar</button>'+
+      '<button class="btn primary" type="submit">Salvar disponibilidade</button></div></form>');
+    const update=()=>byId("stockQuantityWrap").hidden=byId("stockMode").value!=="quantity";
+    update();
+    byId("stockMode").addEventListener("change",update);
+    byId("cancelStock").addEventListener("click",()=>byId("editorDialog").close());
+    byId("stockForm").addEventListener("submit",async e=>{
+      e.preventDefault();
+      const chosen=byId("stockMode").value;
+      const qty=chosen==="out"?0:chosen==="unlimited"?null:Number(byId("stockQuantity").value);
+      if(qty!==null&&(!Number.isInteger(qty)||qty<0||qty>999999)){notice("Informe um estoque válido.",true);return;}
+      if(chosen==="quantity"&&qty===0){notice("Informe pelo menos 1 unidade ou marque como esgotado.",true);return;}
+      const success=await operation(async()=>{
+        result(await state.db.from("carla_products").update({stock:qty}).eq("id",product.id).select("id"));
+        await refresh();
+      },"Disponibilidade atualizada!");
+      if(success){byId("editorDialog").close();page(state.page);}
+    });
+  }
+
   function openEditor(title,kicker,html){
     byId("editorTitle").textContent=title;
     byId("editorKicker").textContent=kicker;
