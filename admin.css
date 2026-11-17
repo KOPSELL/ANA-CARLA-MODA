@@ -70,3 +70,9 @@
   .order-headline{flex-wrap:wrap}
   .order-total{text-align:left}
 }
+
+/* Sessão confiável no aparelho: apenas token temporário, nunca a senha. */
+.auth-card .remember-device{display:flex;align-items:flex-start;gap:12px;margin:1px 0 0;font-size:12px;font-weight:700;line-height:1.5;color:#705b64;cursor:pointer}
+.auth-card .remember-device input[type="checkbox"]{width:18px;height:18px;min-height:18px;margin:2px 0 0;flex:0 0 18px;accent-color:#9f6e7b;cursor:pointer}
+.auth-card .remember-device span{display:block;flex:1}
+.auth-card .remember-device small{display:block;font-weight:400;color:#99848e;font-size:11px;line-height:1.55;margin-top:4px}
