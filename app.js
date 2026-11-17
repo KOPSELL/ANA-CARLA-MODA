@@ -43,7 +43,7 @@
   const storedFavorites = load("carla_modas_favorites_v1", []);
   const favorites = new Set(Array.isArray(storedFavorites) ? storedFavorites.filter((id) => validIds.has(id)) : []);
   const storedBag = load("carla_modas_bag_v1", []);
-  let bag = Array.isArray(storedBag) ? storedBag.filter((item) => item && validIds.has(item.id) && Number.isInteger(item.qty) && item.qty > 0).map((item) => ({ id: item.id, size: String(item.size || "Único"), qty: Math.min(item.qty, 99) })) : [];
+  let bag = Array.isArray(storedBag) ? storedBag.filter((item) => item && validIds.has(item.id) && Number.isInteger(item.qty) && item.qty > 0).map((item) => ({ id: item.id, size: String(item.size || "Único"), qty: Math.min(item.qty, 20) })) : [];
   let activeCategory = "all";
   let term = "";
   let sort = "featured";
@@ -56,7 +56,7 @@
   let pendingRequestKey = null;
 
   function formatPrice(price) {
-    return Number.isFinite(price) && price > 0
+    return Number.isFinite(price) && price >= 0
       ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price)
       : "Valor sob consulta";
   }
@@ -468,13 +468,17 @@
           })
         });
         const json = await response.json();
-        if (!response.ok || !json.ok) throw Error(json.error || "Falha ao registrar");
+        if (!response.ok || !json.ok) {
+          const error = new Error(json.error || "Falha ao registrar");
+          error.status = response.status;
+          throw error;
+        }
         recordedOrder = json.order;
       }finally{clearTimeout(timeout);}
     } catch(error) {
       const message = String(error?.message || "Falha na conexão");
       // Produtos esgotados ou quantidades inválidas não devem ser encaminhados.
-      if (/indisponível|estoque|tamanho|quantidade|peça não está/i.test(message)) {
+      if ((error && error.status >= 400 && error.status < 500) || /indisponível|estoque|tamanho|quantidade|peça não está/i.test(message)) {
         if (tab && !tab.closed) tab.close();
         showToast(message); sendingOrder=false;button.disabled=false;button.innerHTML='<svg><use href="#i-whatsapp"/></svg> Enviar pelo WhatsApp';
         return;
