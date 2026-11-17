@@ -571,9 +571,13 @@
       byId("loginError").hidden=true;
       const button=byId("loginButton");button.disabled=true;button.textContent="Entrando…";
       try{
-        const {error}=await state.db.auth.signInWithPassword({password:byId("loginPassword").value});
+        const {error}=await state.db.auth.signInWithPassword({
+          password:byId("loginPassword").value,
+          rememberDevice:byId("rememberDevice").checked
+        });
         if(error)throw error;
         await checkAdmin();
+        byId("loginPassword").value="";
       }catch(error){
         byId("loginError").textContent=readableError(error);byId("loginError").hidden=false;
       }finally{button.disabled=false;button.innerHTML='Entrar no painel <span>→</span>';}
