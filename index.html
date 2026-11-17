@@ -126,7 +126,7 @@
         <div class="catalog-meta"><span id="resultsCount" aria-live="polite"></span><button id="clearFilters" class="clear-filters" hidden>Limpar filtros ×</button></div>
         <div class="product-grid" id="productGrid"></div>
         <div class="empty-state" id="emptyState" hidden><span>✿</span><h3>Nenhuma peça encontrada</h3><p>Tente outra busca ou explore uma categoria diferente.</p><button class="button button-outline" id="resetSearch">Ver todas as peças</button></div>
-        <p class="catalog-disclaimer">Vitrine demonstrativa: nomes e imagens são exemplos ilustrativos. Preços e disponibilidade devem ser confirmados com a loja.</p>
+        <p class="catalog-disclaimer">Consulte as fotos, preços e disponibilidade de cada peça. Itens sem valor exibido serão confirmados pela loja no WhatsApp.</p>
       </div>
     </section>
 
@@ -148,12 +148,33 @@
     <div class="container footer-bottom"><span>© <span id="currentYear"></span> Carla Modas. Todos os direitos reservados.</span><span class="footer-admin-tools"><span>Feito com carinho ♡</span><a class="admin-footer-link" href="/admin" aria-label="Abrir painel administrativo da Carla Modas" title="Painel administrativo"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="M19.4 13.5a7.8 7.8 0 0 0 0-3l2-1.5-2-3.5-2.4 1a8.3 8.3 0 0 0-2.6-1.5L14 2.4h-4l-.4 2.6A8.3 8.3 0 0 0 7 6.5l-2.4-1-2 3.5 2 1.5a7.8 7.8 0 0 0 0 3l-2 1.5 2 3.5 2.4-1a8.3 8.3 0 0 0 2.6 1.5l.4 2.6h4l.4-2.6a8.3 8.3 0 0 0 2.6-1.5l2.4 1 2-3.5-2-1.5Z"/></svg></a></span></div>
   </footer>
 
+  <button class="sticky-cart" id="stickyCart" aria-label="Abrir carrinho" hidden><svg><use href="#i-bag"/></svg><span><strong>Ver minha sacola</strong><small id="stickyCartDetail">1 peça</small></span><strong class="sticky-total" id="stickyCartTotal"></strong><span class="sticky-arrow">→</span></button>
   <button class="floating-contact" id="floatingContact" aria-label="Falar com a Carla Modas pelo WhatsApp"><svg><use href="#i-whatsapp"/></svg><span>Fale com a gente</span></button>
   <div class="page-overlay" id="pageOverlay" hidden></div>
   <aside class="bag-drawer" id="bagDrawer" role="dialog" aria-modal="true" aria-label="Minha seleção" aria-hidden="true">
     <div class="drawer-header"><div><span class="eyebrow rose">SUAS ESCOLHAS</span><h2>Minha seleção <span id="drawerCount">(0)</span></h2></div><button class="icon-button" id="closeBag" aria-label="Fechar seleção"><svg><use href="#i-close"/></svg></button></div>
     <div class="drawer-items" id="bagItems"></div>
-    <div class="drawer-footer"><p>Os valores e a disponibilidade são confirmados diretamente com a loja.</p><button class="button button-dark drawer-submit" id="sendBag"><svg><use href="#i-whatsapp"/></svg> Consultar no WhatsApp</button><button class="drawer-copy" id="copyBag">Copiar minha lista</button></div>
+    <div class="drawer-footer">
+      <div id="cartActions">
+        <div class="bag-summary" id="bagSummary" aria-live="polite"></div>
+        <button class="button button-dark drawer-submit" id="sendBag"><svg><use href="#i-bag"/></svg> Finalizar pedido <span aria-hidden="true">→</span></button>
+        <button class="button button-outline drawer-secondary" id="keepShopping">Continuar comprando</button>
+        <button class="drawer-copy" id="copyBag">Copiar lista do pedido</button>
+      </div>
+      <div id="checkoutActions" hidden>
+        <button class="checkout-back" id="backToBag">← Voltar ao carrinho</button>
+        <h3 class="checkout-title">Quase lá! ♡</h3>
+        <p class="checkout-lead">Confira sua seleção e envie o pedido pronto para a loja.</p>
+        <div id="checkoutSummary" class="checkout-summary" aria-live="polite"></div>
+        <label class="checkout-field">Seu nome <span>(opcional)</span><input id="customerName" type="text" autocomplete="name" maxlength="100" placeholder="Como podemos chamar você?"></label>
+        <label class="checkout-field">Como prefere receber?
+          <select id="orderFulfillment"><option value="combinar">Combinar com a loja</option><option value="entrega">Consultar entrega</option><option value="retirada">Retirar na loja</option></select>
+        </label>
+        <label class="checkout-field">Observações <span>(opcional)</span><textarea id="orderNote" rows="2" maxlength="400" placeholder="Cor desejada, preferência ou dúvida..."></textarea></label>
+        <button class="button button-dark drawer-submit checkout-final" id="confirmWhatsApp"><svg><use href="#i-whatsapp"/></svg> Enviar pelo WhatsApp</button>
+        <p class="checkout-disclaimer">O WhatsApp será aberto com as peças e valores preenchidos. A loja confirma disponibilidade, entrega e pagamento.</p>
+      </div>
+    </div>
   </aside>
   <dialog class="product-dialog" id="productDialog" aria-label="Detalhes do produto"><div id="productDialogContent"></div></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
