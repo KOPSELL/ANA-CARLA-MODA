@@ -12,8 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/admin.css">
   <script src="/config.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-  <script src="/cloud.js" defer></script>
+  <script src="/admin-api.js" defer></script>
   <script src="/admin.js" defer></script>
 </head>
 <body>
@@ -27,7 +26,7 @@
         <h2>Bem-vinda <em>de volta.</em></h2>
         <p>Digite sua senha para acessar o painel da Carla Modas.</p>
         <form id="loginForm" autocomplete="on">
-          <label>Senha<input type="password" id="loginPassword" name="password" placeholder="Digite sua senha" autocomplete="current-password" required minlength="12"></label>
+          <label>Senha<input type="password" id="loginPassword" name="password" placeholder="Digite sua senha" autocomplete="current-password" required minlength="8"></label>
           <button type="submit" class="btn primary" id="loginButton">Entrar no painel <span>→</span></button>
         </form>
         <p class="form-error" id="loginError" role="alert" hidden></p>
@@ -36,8 +35,8 @@
     </div>
   </section>
   <section class="setup-screen" id="setupScreen" hidden>
-    <div class="setup-card"><span class="setup-flower">✿</span><p class="kicker">CONFIGURAÇÃO NECESSÁRIA</p><h1>Vamos conectar a Carla Modas.</h1><p>O painel está criado, mas ainda precisa do projeto Supabase e das políticas de acesso.</p>
-      <ol><li>Execute o arquivo <code>supabase/carla_modas.sql</code> no Supabase do Sex Shop.</li><li>Preencha <code>config.js</code> com a URL e a chave <strong>publishable</strong> do mesmo projeto.</li><li>Ative a autenticação por telefone e crie uma conta Auth para o número da loja, com uma senha forte, depois autorize-a em <code>carla_admin_users</code>.</li></ol>
+    <div class="setup-card"><span class="setup-flower">✿</span><p class="kicker">CONFIGURAÇÃO NECESSÁRIA</p><h1>Vamos conectar a Carla Modas.</h1><p>O painel usa uma senha única protegida no servidor.</p>
+      <ol><li>Confirme a conexão com o Supabase da Carla Modas.</li><li>Verifique se a função <code>carla-admin-api</code> está ativa.</li><li>Use a senha configurada no servidor para entrar.</li></ol>
       <a class="btn primary" href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer">Abrir Supabase ↗</a><a class="back-link" href="/">← Catálogo</a>
     </div>
   </section>
