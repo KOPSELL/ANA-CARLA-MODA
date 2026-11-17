@@ -88,7 +88,7 @@ Deno.serve(async (request:Request)=>{
      quantities.set(line.id,qty);
      if(product.stock!==null&&qty>product.stock)invalid("Estoque insuficiente para "+product.name+". Altere a quantidade.");
      const unit=product.price===null?null:money(Number(product.price));
-     if(unit===null)missing+=1;
+     if(unit===null)missing+=line.qty;
      const subtotal=unit===null?null:money(unit*line.qty);
      if(subtotal!==null)total=money(total+subtotal);
      snapshot.push({
@@ -105,7 +105,7 @@ Deno.serve(async (request:Request)=>{
      const {count,error:limitError}=await db.from("carla_order_intents").select("id",{count:"exact",head:true})
        .eq("request_fingerprint",fingerprint).gte("created_at",since);
      if(limitError)throw limitError;
-     if((count||0)>=12)invalid("Muitas tentativas recentes. Aguarde alguns minutos e tente novamente.",429);
+     if((count||0)>=30)invalid("Muitas tentativas recentes. Aguarde alguns minutos e tente novamente.",429);
    }
    const {data:order,error:insertError}=await db.from("carla_order_intents").insert({
      request_key:key,customer_name,customer_note,fulfillment,
