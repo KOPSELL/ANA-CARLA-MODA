@@ -10,7 +10,7 @@ Vitrine feminina + painel administrativo por **senha única**. Não é necessár
 
 ## Painel administrativo
 
-Entre no catálogo, desça até o rodapé e toque na **engrenagem**. A tela de login exibe somente o campo **Senha**.
+Entre no catálogo, desça até o rodapé e toque na **engrenagem**. A tela de login exibe o campo **Senha** e a opção **Manter conectado neste aparelho** (marcada por padrão).
 
 O painel oferece:
 - visão geral dos produtos e da disponibilidade;
@@ -23,7 +23,7 @@ O painel oferece:
 
 ## Como funciona a segurança
 
-A senha nunca é embutida em JavaScript nem em GitHub. O banco guarda apenas um hash PBKDF2 com salt, e a função do Supabase verifica a senha, limita tentativas, gera um token aleatório de sessão com validade de 8 horas e armazena apenas o hash do token. O token é guardado no `sessionStorage` do navegador. Todas as ações administrativas são autorizadas pela função, com uma lista explícita de tabelas e campos. O frontend **não** usa a service role key.
+A senha nunca é embutida em JavaScript nem em GitHub. O banco guarda apenas um hash PBKDF2 com salt, e a função do Supabase verifica a senha, limita tentativas, gera um token aleatório de sessão com duração de **até 30 dias** quando a opção de manter conectado está marcada, ou **8 horas** caso contrário, e armazena apenas o hash do token no servidor. O navegador guarda o token no `localStorage` do aparelho confiável (ou `sessionStorage` se a opção não estiver marcada). **A senha não fica armazenada no site.** Ao tocar em Sair, o token é invalidado e excluído do aparelho. Todas as ações administrativas são autorizadas pela função, com uma lista explícita de tabelas e campos. O frontend **não** usa a service role key.
 
 A edição direta via chave pública está desativada pelas permissões de banco e armazenamento. A vitrine pública só pode consultar produtos/categorias ativos e configurações publicáveis. A função administrativa usa as credenciais seguras do Supabase Edge Functions, sem afetar o banco do Sex Shop.
 
@@ -37,7 +37,7 @@ O arquivo `config.js` contém somente o identificador do Supabase e a **publisha
 
 ## Conteúdo
 
-- 6 categorias: Moda Fitness, Pijamas, Baby Doll Rendado, Camisolas, Sutiã Comfort e Calcinhas Avulsas.
+- 7 categorias: Moda Fitness, Pijamas, Baby Doll Rendado, Camisolas, Sutiã Comfort, Calcinhas Avulsas e **Perfumes**.
 - 9 referências cadastradas com base nos prints recebidos; somente preços legíveis foram inseridos.
 - WhatsApp: 55 54 98429-0397.
 - Fotos e logo reais: precisam ser enviados pelo painel.
@@ -75,3 +75,8 @@ O esquema complementar está em **supabase/carla_orders.sql** e já foi aplicado
 A Carla Modas possui **finalização assistida pelo WhatsApp**, não um checkout com cobrança nem um ERP financeiro. Há controle de estoque no cadastro, mas ele não é decrementado automaticamente ao enviar mensagens.
 
 Para novos ambientes, o SQL inicial encontra-se em `supabase/carla_modas.sql`. Esse arquivo corresponde à **estrutura inicial anterior à migração para senha única** e não deve ser reexecutado no projeto atual, porque contém as antigas políticas de edição via Supabase Auth. O sistema atual usa sessões gerenciadas pela função `supabase/functions/carla-admin-api/index.ts`. Uma nova instalação deve reproduzir também as tabelas de credenciais/sessões e as restrições finais de escrita descritas aqui.
+
+## Acesso pelo celular
+Quando a Carla entrar pelo celular e mantiver a opção de lembrar o aparelho marcada, o painel permanecerá autenticado após fechar e reabrir o navegador, por até 30 dias. Não é salvamento da senha: é uma sessão temporária que pode ser encerrada pelo botão **Sair**. Não use essa opção em aparelhos compartilhados. Ao fim de 30 dias, será necessário digitar a senha novamente.
+
+A categoria **Perfumes** já foi adicionada e ativada no Supabase do Sex Shop, apenas na estrutura exclusiva da Carla Modas. Nenhum perfume foi criado sem os dados fornecidos pela loja.
