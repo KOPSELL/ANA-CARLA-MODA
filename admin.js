@@ -423,6 +423,131 @@
       if(success)page("appearance");
     });
   }
+  function orderLabel(status){
+    return {whatsapp_aberto:"WhatsApp aberto",em_atendimento:"Em atendimento",concluido:"Concluído",cancelado:"Cancelado"}[status]||"Desconhecido";
+  }
+  function orderCode(order){return "CM-"+String(order.number||0).padStart(5,"0");}
+  function orderDate(value){
+    return new Date(value).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  }
+  function fulfillmentLabel(value){
+    return {entrega:"Consultar entrega",retirada:"Retirar na loja",combinar:"Combinar com a loja"}[value]||"Combinar com a loja";
+  }
+  function renderOrders(){
+    const pending=state.orders.filter(o=>o.status==="whatsapp_aberto").length;
+    const attending=state.orders.filter(o=>o.status==="em_atendimento").length;
+    const concluded=state.orders.filter(o=>o.status==="concluido").length;
+    byId("pageContent").innerHTML=
+      '<section class="welcome order-welcome"><div><p class="kicker">HISTÓRICO DE FINALIZAÇÃO</p><h2>Pedidos da Carla Modas ♡</h2>'+
+      '<p>Acompanhe as sacolas encaminhadas para abrir no WhatsApp. O envio da mensagem só é confirmado quando a cliente realmente a envia.</p></div>'+
+      '<button type="button" class="btn primary" id="refreshOrders">↻ Atualizar</button></section>'+
+      '<section class="stats">'+
+        metric("♧",state.orders.length,"Aberturas do WhatsApp")+
+        metric("◌",pending,"Aguardando retorno")+
+        metric("◈",attending,"Em atendimento")+
+        metric("✓",concluded,"Concluídos pela loja")+
+      '</section>'+
+      '<div class="list-heading"><div><h2>Histórico de solicitações</h2><p class="field-note">Registros não significam vendas confirmadas. Estoque não é reduzido automaticamente.</p></div>'+
+        '<button class="btn outline small" id="exportOrders">↧ Exportar histórico</button></div>'+
+      '<div class="toolbar"><input type="search" class="search" id="orderSearch" placeholder="Buscar código, nome ou peça..." value="'+esc(state.orderQuery)+'" aria-label="Buscar pedidos">'+
+      '<select id="orderStatusFilter" aria-label="Filtrar status">'+
+        '<option value="all">Todos os status</option>'+
+        ['whatsapp_aberto','em_atendimento','concluido','cancelado'].map(s=>
+          '<option value="'+s+'"'+(state.orderFilter===s?' selected':'')+'>'+orderLabel(s)+'</option>').join("")+
+      '</select></div>'+
+      '<section id="ordersPanel" class="order-list" aria-live="polite"></section>'+
+      '<p class="hint">O histórico registra a abertura do WhatsApp pelo cliente e os dados da sacola naquele momento. A mensagem não é enviada automaticamente: a cliente precisa tocar em enviar no aplicativo. Use o status para organizar atendimentos e marque como concluído somente após confirmação.</p>';
+    byId("orderSearch").addEventListener("input",e=>{state.orderQuery=e.target.value;renderOrderRows();});
+    byId("orderStatusFilter").addEventListener("change",e=>{state.orderFilter=e.target.value;renderOrderRows();});
+    byId("refreshOrders").addEventListener("click",async()=>{
+      await operation(async()=>{await refresh();renderOrders();},"Histórico atualizado!");
+    });
+    byId("exportOrders").addEventListener("click",()=>{
+      const rows=[["Código","Data","Cliente","Itens","Valor conhecido","Itens sem preço","Recebimento","Status","Observações do cliente","Anotações da loja"]];
+      for(const o of state.orders){
+        rows.push([orderCode(o),orderDate(o.created_at),o.customer_name,
+          arr(o.items).map(item=>item.qty+"x "+item.name+" ("+item.size+")").join(" / "),
+          o.total,o.missing_prices,fulfillmentLabel(o.fulfillment),orderLabel(o.status),o.customer_note,o.internal_notes]);
+      }
+      download("carla-moda-historico-pedidos.csv",rows.map(row=>row.map(csvCell).join(";")).join("\r\n"),"text/csv;charset=utf-8");
+    });
+    const panel=byId("ordersPanel");
+    panel.addEventListener("change",async e=>{
+      const input=e.target.closest("[data-order-status]");
+      if(!input)return;
+      const id=input.dataset.orderStatus,record=state.orders.find(o=>o.id===id);
+      if(!record)return;
+      const next=input.value;
+      if(!["whatsapp_aberto","em_atendimento","concluido","cancelado"].includes(next))return;
+      input.disabled=true;
+      const success=await operation(async()=>{
+        result(await state.db.from("carla_order_intents").update({status:next}).eq("id",id).select("id"));
+        record.status=next;
+      },"Status atualizado!");
+      if(!success)input.value=record.status;
+      input.disabled=false;
+      if(success)renderOrders();
+    });
+    panel.addEventListener("click",async e=>{
+      const notes=e.target.closest("[data-save-order-note]");
+      const code=e.target.closest("[data-copy-order-code]");
+      if(code){
+        const order=state.orders.find(o=>o.id===code.dataset.copyOrderCode);
+        if(order){await navigator.clipboard.writeText(orderCode(order)).then(()=>notice("Código copiado!")).catch(()=>notice("Não foi possível copiar.",true));}
+        return;
+      }
+      if(!notes)return;
+      const id=notes.dataset.saveOrderNote,record=state.orders.find(o=>o.id===id);
+      if(!record)return;
+      const value=panel.querySelector('[data-order-note="'+id+'"]')?.value.trim()||"";
+      const success=await operation(async()=>{
+        result(await state.db.from("carla_order_intents").update({internal_notes:value}).eq("id",id).select("id"));
+        record.internal_notes=value;
+      },"Anotação salva!");
+      if(!success)notice("Não foi possível salvar a anotação.",true);
+    });
+    renderOrderRows();
+  }
+  function renderOrderRows(){
+    const target=byId("ordersPanel");
+    if(!target)return;
+    const term=state.orderQuery.trim().toLocaleLowerCase("pt-BR");
+    const list=state.orders.filter(o=>{
+      if(state.orderFilter!=="all"&&state.orderFilter!==o.status)return false;
+      const searchable=[orderCode(o),o.customer_name,o.customer_note,
+        ...arr(o.items).map(i=>i.name+" "+i.size)].join(" ").toLocaleLowerCase("pt-BR");
+      return !term||searchable.includes(term);
+    });
+    if(!list.length){
+      target.innerHTML=emptyState("Nenhum pedido encontrado","Os pedidos iniciados no WhatsApp aparecerão aqui.");
+      return;
+    }
+    target.innerHTML=list.map(o=>{
+      const options=["whatsapp_aberto","em_atendimento","concluido","cancelado"].map(status=>
+        '<option value="'+status+'"'+(o.status===status?' selected':'')+'>'+orderLabel(status)+'</option>').join("");
+      const lines=arr(o.items).map(item=>
+        '<div class="order-item-row"><span><strong>'+esc(item.qty)+'× '+esc(item.name)+'</strong>'+
+        '<small> Tamanho: '+esc(item.size)+' · '+(item.unit_price==null?"Sob consulta":esc(money(item.unit_price))+" cada")+'</small></span>'+
+        '<b>'+(item.subtotal==null?"Sob consulta":esc(money(item.subtotal)))+'</b></div>').join("");
+      return '<article class="order-card">'+
+        '<div class="order-top"><div><span class="order-number">'+esc(orderCode(o))+'</span>'+
+        '<div class="order-time">'+esc(orderDate(o.created_at))+'</div></div>'+
+        '<span class="order-count">'+o.item_count+' '+(o.item_count===1?"peça":"peças")+'</span></div>'+
+        '<div class="order-headline"><div><strong>'+esc(o.customer_name||"Cliente não identificado")+'</strong>'+
+        '<span>'+esc(fulfillmentLabel(o.fulfillment))+'</span></div>'+
+        '<div class="order-total"><strong>'+esc(money(o.total))+'</strong>'+
+        (o.missing_prices?'<small>+ '+o.missing_prices+' peça(s) sob consulta</small>':'<small>Subtotal informado</small>')+
+        '</div></div>'+
+        '<label class="field order-status-field">Situação do atendimento<select data-order-status="'+esc(o.id)+'">'+options+'</select></label>'+
+        '<details class="order-details"><summary>Ver peças e observações</summary>'+
+        '<div class="order-item-list">'+lines+'</div>'+
+        (o.customer_note?'<p class="order-customer-note"><strong>Observação:</strong> '+esc(o.customer_note)+'</p>':'')+
+        '<label class="field">Anotação interna da loja<textarea data-order-note="'+esc(o.id)+'" rows="2" maxlength="1000" placeholder="Ex.: cliente confirmou pagamento, tamanho separado...">'+esc(o.internal_notes||"")+'</textarea></label>'+
+        '<div class="order-card-actions"><button type="button" class="btn light small" data-save-order-note="'+esc(o.id)+'">Salvar anotação</button>'+
+        '<button type="button" class="btn outline small" data-copy-order-code="'+esc(o.id)+'">Copiar código</button></div></details></article>';
+    }).join("");
+  }
+
   function renderTools(){
     byId("pageContent").innerHTML='<div class="list-heading"><div><h2>Seus dados, sempre com você.</h2><p class="field-note">Baixe uma cópia dos cadastros para controle e segurança.</p></div></div>'+
       '<div class="tools-grid"><article class="tool-card"><p class="kicker">PLANILHA</p><h3>Exportar produtos</h3><p>Arquivo CSV com nomes, categorias, valores, tamanhos, cores, estoque e status, para abrir no Excel.</p><button class="btn primary" id="csvDownload">Baixar planilha CSV ↧</button></article>'+
