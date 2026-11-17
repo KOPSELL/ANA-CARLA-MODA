@@ -29,7 +29,7 @@
     if(/duplicate key|unique constraint/i.test(message))return"Já existe outro cadastro com este código ou identificador.";
     if(/foreign key constraint/i.test(message))return"Esta categoria possui produtos. Mova os produtos antes de excluí-la.";
     if(/Failed to fetch|NetworkError|fetch failed/i.test(message))return"Falha de conexão. Verifique a internet e tente novamente.";
-    if(/invalid login credentials/i.test(message))return"E-mail ou senha incorretos.";
+    if(/invalid login credentials/i.test(message))return"Senha incorreta ou conta administrativa ainda não configurada.";
     return message.slice(0,300);
   }
   async function operation(job,ok="Alterações salvas com sucesso!"){
@@ -394,7 +394,8 @@
       byId("loginError").hidden=true;
       const button=byId("loginButton");button.disabled=true;button.textContent="Entrando…";
       try{
-        const {error}=await state.db.auth.signInWithPassword({email:byId("loginEmail").value.trim(),password:byId("loginPassword").value});
+        const phone = "+5554984290397";
+        const {error}=await state.db.auth.signInWithPassword({phone,password:byId("loginPassword").value});
         if(error)throw error;
         await checkAdmin();
       }catch(error){
