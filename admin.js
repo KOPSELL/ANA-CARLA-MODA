@@ -29,7 +29,7 @@
     if(/duplicate key|unique constraint/i.test(message))return"Já existe outro cadastro com este código ou identificador.";
     if(/foreign key constraint/i.test(message))return"Esta categoria possui produtos. Mova os produtos antes de excluí-la.";
     if(/Failed to fetch|NetworkError|fetch failed/i.test(message))return"Falha de conexão. Verifique a internet e tente novamente.";
-    if(/invalid login credentials/i.test(message))return"Senha incorreta ou conta administrativa ainda não configurada.";
+    if(/invalid login credentials|senha incorreta/i.test(message))return"Senha incorreta. Verifique e tente novamente.";
     return message.slice(0,300);
   }
   async function operation(job,ok="Alterações salvas com sucesso!"){
@@ -63,9 +63,7 @@
   async function checkAdmin(){
     const {data:{user},error}=await state.db.auth.getUser();
     if(error||!user)return false;
-    const record=result(await state.db.from("carla_admin_users").select("role").eq("user_id",user.id).maybeSingle());
-    if(!record)throw Error("Esta conta ainda não foi autorizada. Cadastre o usuário em carla_admin_users pelo SQL Editor.");
-    state.me=user;state.role=record.role;
+    state.me=user;state.role="owner";
     setScreen("adminLayout");await refresh();page(state.page);
     return true;
   }
@@ -394,8 +392,7 @@
       byId("loginError").hidden=true;
       const button=byId("loginButton");button.disabled=true;button.textContent="Entrando…";
       try{
-        const phone = String(window.CARLA_SUPABASE_CONFIG?.adminPhone || "+5554984290397");
-        const {error}=await state.db.auth.signInWithPassword({phone,password:byId("loginPassword").value});
+        const {error}=await state.db.auth.signInWithPassword({password:byId("loginPassword").value});
         if(error)throw error;
         await checkAdmin();
       }catch(error){
@@ -412,9 +409,9 @@
   }
   async function init(){
     initHandlers();
-    if(!window.CarlaCloud||!window.CarlaCloud.configured){setScreen("setupScreen");return;}
+    if(!window.CarlaAdminAPI || !window.CARLA_SUPABASE_CONFIG?.publishableKey){setScreen("setupScreen");return;}
     try{
-      state.db=window.CarlaCloud.getClient();
+      state.db=window.CarlaAdminAPI.createClient();
       const session=result(await state.db.auth.getSession())?.session;
       if(!session){setScreen("authScreen");return;}
       await checkAdmin();
