@@ -1,85 +1,66 @@
 # Carla Modas ♡
 
-Vitrine online feminina, elegante e responsiva, pronta para publicar na Vercel.
+Vitrine feminina + painel administrativo responsivo, integrada ao Supabase do Sex Shop **somente na infraestrutura**. Todos os dados da Carla ficam em tabelas e bucket próprios, com políticas RLS exclusivas.
 
-## Coleções
-- Moda Fitness
-- Pijamas
-- Baby Doll Rendado
-- Camisolas
-- Sutiã Comfort
-- Calcinhas Avulsas
+## Repositório
+https://github.com/KOPSELL/ANA-CARLA-MODA
 
-## O que funciona
-- Vitrine com busca por nome, categoria e descrição
-- Filtros por coleção e ordenação alfabética
-- Favoritos salvos no navegador
-- Detalhes da peça, escolha de tamanho e seleção de itens
-- Lista de interesses com quantidades e opção de copiar
-- Envio da seleção para WhatsApp após configurar o número
-- Layout responsivo para celular e desktop
+## Projeto Supabase correto
+- Project ID: `feloxrkstqptipfxrmkf`
+- Project URL: `https://feloxrkstqptipfxrmkf.supabase.co`
+- REST API: `https://feloxrkstqptipfxrmkf.supabase.co/rest/v1/`
 
-## Personalização
+**IMPORTANTE:** A URL não é suficiente para ativar o banco. Ainda é preciso adicionar a chave pública e executar o SQL.
 
-Tudo o que é necessário para personalizar o catálogo está em catalog.js.
+## Ativação (na ordem)
 
-### WhatsApp
+1. Abra o SQL Editor do projeto `feloxrkstqptipfxrmkf` e execute todo o arquivo `supabase/carla_modas.sql`. Ele cria tabelas carla_categories, carla_products, carla_settings, carla_admin_users, bucket carla-modas e as políticas de isolamento.
+2. No mesmo projeto, vá em **Project Settings > API Keys**. Copie apenas a **publishable key** (ou a **anon key pública**, conforme a versão do painel). Atualize `config.js`:
+   
+   ```javascript
+   window.CARLA_SUPABASE_CONFIG = Object.freeze({
+     url: "https://feloxrkstqptipfxrmkf.supabase.co",
+     publishableKey: "SUA_CHAVE_PUBLICA"
+   });
+   ```
 
-Encontre o bloco:
+   Nunca use a chave secreta, `service_role`, `sb_secret_...` ou uma senha administrativa no frontend.
+3. Em **Supabase > Authentication > Users**, crie a conta administrativa da Carla. **Não habilite cadastro de administradores pelo site**.
+4. Autorize a conta no banco com este SQL **após substituír o e-mail**:
+   
+   ```sql
+   insert into public.carla_admin_users (user_id,role)
+   select id, 'owner'
+   from auth.users
+   where email = 'EMAIL_EXATO_DO_USUARIO'
+   on conflict (user_id) do update set role='owner';
+   ```
+   
+   Certifique-se de que a consulta localizou **exatamente uma conta**. Nunca use o e-mail de um cliente sem sua permissão.
+5. Importe o repositório para Vercel com **Other** (site estático, sem build command), publique e abra `/admin` para entrar no painel.
 
-    store: {
-      name: "Carla Modas",
-      whatsapp: "",
-      instagram: ""
-    }
+## Funcionalidades do painel
+- Entrar com e-mail e senha via Supabase Auth, somente usuários autorizados.
+- Visão geral com totais de produtos, publicados, categorias e sem estoque.
+- Cadastrar, editar, ocultar e excluir produtos.
+- Categoria, SKU, nome, descrição, preço, preço antigo, ordem, destaque, cores, tamanhos e estoque.
+- Foto principal e galeria com até seis fotos por peça.
+- Criar, editar e excluir categorias; foto, descrição, ordem e visibilidade.
+- Identidade da loja: logo, imagem principal, textos, nome, WhatsApp, Instagram, descrição e localização.
+- Exportação de produtos para CSV e cópia de catálogo em JSON.
+- Uso pelo celular, com navegação inferior e upload de fotos da galeria/câmera.
 
-Informe o número WhatsApp com DDI e DDD, somente dígitos: "55" + "DDD" + "número". Sem "+", espaços ou parênteses. Também é possível incluir o endereço completo do Instagram.
+O painel não possui checkout, gestão de pedidos recebidos nem cálculo de faturamento: a vitrine envia consultas para o WhatsApp da loja.
 
-Se o WhatsApp estiver vazio, o site não envia mensagens; a seleção pode ser copiada. Nunca inclua senhas ou chaves privadas nesse arquivo.
+## Configurações iniciais
+- Loja: Carla Modas
+- WhatsApp: **55 54 98429-0397**
+- Categorias: Moda Fitness, Pijamas, Baby Doll Rendado, Camisolas, Sutiã Comfort, Calcinhas Avulsas.
+- Produtos cadastrados pelo SQL: os nove nomes identificáveis nos prints do catálogo anterior, com preços apenas onde legíveis, sem imagens individuais. As imagens devem ser carregadas no painel usando fotos reais.
+- Logo real: envie a imagem pelo painel **Identidade da loja > Logo oficial**. O arquivo do logo compartilhado no chat não foi enviado automaticamente ao GitHub/Supabase.
 
-### Produtos
-
-Cada produto é um objeto na lista products:
-
-    {
-      id: "p001",
-      category: "fitness",
-      name: "Nome do produto",
-      description: "Descrição do produto",
-      price: 79.90,
-      sizes: ["P", "M", "G"],
-      tag: "Novidade",
-      image: "https://endereco-da-foto.jpg"
-    }
-
-O campo price aceita um número (por exemplo 79.90) ou null para "Valor sob consulta". Não use texto com "R$" no campo. Cada ID deve ser único.
-
-As imagens devem ser HTTPS e preferencialmente retratos verticais. Carregue fotos reais de cada produto em um serviço de hospedagem de imagens antes de divulgar a loja.
-
-**Atenção:** os produtos, imagens e nomes incluídos inicialmente são exemplos demonstrativos. A Carla Modas precisa trocar esses dados pelos itens reais antes de promover o catálogo. As imagens de banco não representam necessariamente o produto anunciado.
-
-## Publicar na Vercel
-
-1. Entre em https://vercel.com/new
-2. Importe o repositório KOPSELL/ANA-CARLA-MODA.
-3. Selecione Other / sem framework, se solicitado.
-4. Deploy, sem build command e sem output directory adicional (raiz do projeto).
-
-O projeto é HTML + CSS + JavaScript puro: não precisa instalar dependências ou configurar Supabase para esta vitrine estática.
-
-## Limitações transparentes
-
-- Este é um catálogo para consulta, não uma loja com checkout e pagamento.
-- Não há banco de dados, estoque automático, pedidos persistidos ou painel administrativo online.
-- Favoritos e seleção ficam apenas no navegador do visitante.
-- Para cadastrar fotos, preços e produtos pelo celular com sincronização, é necessário integrar backend (por exemplo Supabase) e autenticação administrativa antes de colocá-lo em produção.
-
-## Arquivos
-- index.html: estrutura do site
-- styles.css: identidade visual e responsividade
-- catalog.js: categorias, produtos e canais da loja
-- app.js: filtros, seleção, favoritos e envio pelo WhatsApp
-- favicon.svg: ícone da marca
-- vercel.json: implantação estática
-
-Feito com carinho para a Carla Modas.
+## Segurança
+- O catálogo público só lê categorias/produtos ativos e configurações públicas.
+- Somente os usuários de `carla_admin_users` podem alterar os registros e enviar fotos.
+- O Sex Shop não é alterado, mas ainda compartilha o mesmo banco/projeto Supabase; não é isolamento de infraestrutura. Se precisar isolamento completo, crie outro projeto.
+- Cuidado ao excluir produtos ou categorias: exclusões são permanentes. Faça backup antes de alterações grandes.
