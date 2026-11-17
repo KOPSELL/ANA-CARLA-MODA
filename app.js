@@ -51,11 +51,56 @@
   let selectedProduct = null;
   let selectedSize = "Único";
   let toastTimer;
+  let checkoutMode = false;
+  let sendingOrder = false;
+  let pendingRequestKey = null;
 
   function formatPrice(price) {
     return Number.isFinite(price) && price > 0
       ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price)
       : "Valor sob consulta";
+  }
+
+  function cartSummary() {
+    return bag.reduce((acc, item) => {
+      const product = productById(item.id);
+      if (!product) return acc;
+      acc.qty += item.qty;
+      if (Number.isFinite(product.price)) acc.knownTotal += Number(product.price) * item.qty;
+      else acc.missingPrices += item.qty;
+      return acc;
+    }, { qty: 0, knownTotal: 0, missingPrices: 0 });
+  }
+
+  function displayTotal(overview) {
+    if (!overview.qty) return "Sacola vazia";
+    if (overview.missingPrices) {
+      return (overview.knownTotal ? "Subtotal: " + formatPrice(overview.knownTotal) + " + " : "")
+        + overview.missingPrices + " peça(s) sob consulta";
+    }
+    return "Total das peças: " + formatPrice(overview.knownTotal);
+  }
+
+  function updateCheckoutSteps() {
+    const cart = byId("cartActions"), checkout = byId("checkoutActions");
+    if (cart && checkout) {
+      cart.hidden = checkoutMode;
+      checkout.hidden = !checkoutMode;
+      if (checkoutMode) renderCheckoutSummary();
+    }
+  }
+
+  function renderCheckoutSummary() {
+    const target = byId("checkoutSummary");
+    if (!target) return;
+    const rows = bag.map(item => {
+      const p = productById(item.id);
+      if (!p) return "";
+      const subtotal = Number.isFinite(p.price) ? formatPrice(p.price * item.qty) : "Sob consulta";
+      return '<div class="checkout-summary-row"><span>' + item.qty + '× ' + safeText(p.name)
+        + '<small>Tam.: ' + safeText(item.size) + '</small></span><strong>' + subtotal + '</strong></div>';
+    }).join("");
+    target.innerHTML = rows + '<div class="checkout-summary-total">' + safeText(displayTotal(cartSummary())) + '</div>';
   }
 
   function showToast(message) {
@@ -115,7 +160,7 @@
       '<div class="product-details"><span class="product-category">' + safeText(category ? category.name : "") + '</span>' +
         '<button class="product-name" data-view="' + safeText(product.id) + '">' + safeText(product.name) + '</button>' +
         '<span class="product-price">' + formatPrice(product.price) + '</span>' +
-        '<span class="product-hint">' + (product.hasRealImage ? "Foto da peça" : "Imagem ilustrativa") + '</span>' +
+        '<span class="product-hint">' + (product.stock === 0 ? "Indisponível no momento" : product.hasRealImage ? "Foto da peça" : "Imagem ilustrativa") + '</span>' +
       '</div>' +
     '</article>';
   }
@@ -152,6 +197,14 @@
     byId("bagCount").textContent = String(count);
     byId("bagCount").hidden = count === 0;
     byId("drawerCount").textContent = "(" + count + ")";
+    const sticky = byId("stickyCart");
+    if (sticky) {
+      sticky.hidden = count === 0;
+      document.body.classList.toggle("has-cart", count > 0);
+      byId("stickyCartDetail").textContent = count + (count === 1 ? " peça selecionada" : " peças selecionadas");
+      const summary = cartSummary();
+      byId("stickyCartTotal").textContent = summary.missingPrices ? "Ver valores" : formatPrice(summary.knownTotal);
+    }
   }
 
   function toggleFavorite(id) {
@@ -210,7 +263,11 @@
       const chosen = productById(selectedProduct);
       if (!chosen || chosen.stock === 0) return;
       const existing = bag.find((item) => item.id === selectedProduct && item.size === selectedSize);
-      if (existing) existing.qty = Math.min(99, existing.qty + 1);
+      const countForProduct = bag.filter(item => item.id === selectedProduct).reduce((n, item) => n + item.qty, 0);
+      if ((existing && existing.qty >= 20) || (chosen.stock !== null && countForProduct >= chosen.stock)) {
+        showToast("Quantidade máxima ou estoque disponível atingido."); return;
+      }
+      if (existing) existing.qty += 1;
       else bag.push({ id: selectedProduct, size: selectedSize, qty: 1 });
       saveBag();
       byId("productDialog").close();
@@ -220,6 +277,7 @@
   });
 
   function saveBag() {
+    pendingRequestKey = null;
     store("carla_modas_bag_v1", bag);
     updateCounters();
     renderBag();
@@ -228,18 +286,25 @@
   function renderBag() {
     const target = byId("bagItems");
     if (!bag.length) {
-      target.innerHTML = '<div class="drawer-empty"><svg><use href="#i-bag"/></svg><h3>Sua seleção está vazia</h3><p>Explore a coleção e adicione suas peças favoritas para consultar com a loja.</p></div>';
+      checkoutMode = false;
+      target.innerHTML = '<div class="drawer-empty"><svg><use href="#i-bag"/></svg><h3>Sua sacola está vazia</h3><p>Escolha uma peça para montar seu pedido.</p></div>';
     } else {
       target.innerHTML = bag.map(function (item, index) {
         const product = productById(item.id);
         if (!product) return "";
-        return '<article class="bag-item"><img src="' + safeImage(product.image) + '" alt="Imagem ilustrativa da peça ' + safeText(product.name) + '">' +
-          '<div class="bag-item-info"><small>' + safeText((categoryById(product.category) || {}).name || "") + '</small><strong>' + safeText(product.name) + '</strong><small>Tamanho: ' + safeText(item.size) + ' · ' + formatPrice(product.price) + '</small>' +
+        const subtotal = Number.isFinite(product.price) ? formatPrice(product.price * item.qty) : "Sob consulta";
+        return '<article class="bag-item"><img src="' + safeImage(product.image) + '" alt="' + safeText(product.name) + '">' +
+          '<div class="bag-item-info"><small>' + safeText((categoryById(product.category) || {}).name || "") + '</small><strong>' + safeText(product.name) + '</strong>' +
+          '<small>Tamanho: ' + safeText(item.size) + ' · ' + formatPrice(product.price) + ' cada</small>' +
+          '<div class="bag-subtotal">Subtotal: ' + subtotal + '</div>' +
           '<div class="bag-item-bottom"><div class="qty-control"><button data-qty="' + index + '" data-delta="-1" aria-label="Diminuir quantidade">−</button><span>' + item.qty + '</span><button data-qty="' + index + '" data-delta="1" aria-label="Aumentar quantidade">+</button></div><button class="remove-item" data-remove="' + index + '">Remover</button></div></div></article>';
       }).join("");
     }
-    byId("sendBag").disabled = bag.length === 0;
-    byId("copyBag").disabled = bag.length === 0;
+    const summary = cartSummary();
+    byId("bagSummary").innerHTML = '<span>' + summary.qty + (summary.qty === 1 ? ' peça' : ' peças') + '</span><strong>' + safeText(displayTotal(summary)) + '</strong>';
+    byId("sendBag").disabled = !bag.length;
+    byId("copyBag").disabled = !bag.length;
+    updateCheckoutSteps();
   }
 
   byId("bagItems").addEventListener("click", function (event) {
@@ -257,7 +322,12 @@
       const index = Number(qtyButton.dataset.qty);
       const delta = Number(qtyButton.dataset.delta);
       if (Number.isInteger(index) && bag[index] && (delta === 1 || delta === -1)) {
-        bag[index].qty = Math.max(0, Math.min(99, bag[index].qty + delta));
+        const p = productById(bag[index].id);
+        const already = bag.filter(i => i.id === bag[index].id).reduce((sum, i) => sum + i.qty, 0);
+        if (delta > 0 && (bag[index].qty >= 20 || (p && p.stock !== null && already >= p.stock))) {
+          showToast("Quantidade máxima ou estoque disponível atingido."); return;
+        }
+        bag[index].qty = Math.max(0, Math.min(20, bag[index].qty + delta));
         if (!bag[index].qty) bag.splice(index, 1);
         saveBag();
       }
@@ -267,7 +337,7 @@
   function openBag() {
     const drawer = byId("bagDrawer");
     byId("pageOverlay").hidden = false;
-    document.body.classList.add("no-scroll");
+    document.body.classList.add("no-scroll", "bag-open");
     drawer.classList.add("is-open");
     drawer.setAttribute("aria-hidden", "false");
     byId("closeBag").focus();
@@ -278,16 +348,46 @@
     drawer.classList.remove("is-open");
     drawer.setAttribute("aria-hidden", "true");
     byId("pageOverlay").hidden = true;
-    document.body.classList.remove("no-scroll");
+    document.body.classList.remove("no-scroll", "bag-open");
+    checkoutMode = false;
+    updateCheckoutSteps();
     byId("bagButton").focus();
   }
 
-  function bagMessage() {
-    const rows = bag.map(function (item) {
-      const product = productById(item.id);
-      return "• " + item.qty + "x " + (product ? product.name : item.id) + " — tamanho " + item.size;
+  function bagMessage(recordedOrder = null, customer = {}) {
+    const lines = recordedOrder?.items ?? bag.map(item => {
+      const p = productById(item.id);
+      const unitPrice = p && Number.isFinite(p.price) ? p.price : null;
+      return { name:p ? p.name : "Peça",qty:item.qty,size:item.size,unit_price:unitPrice,
+        subtotal:unitPrice === null ? null : unitPrice * item.qty };
     });
-    return "Olá! Tudo bem? 🌷\nTenho interesse nestas peças da Carla Modas:\n\n" + rows.join("\n") + "\n\nGostaria de confirmar os preços, as cores e a disponibilidade. Obrigada!";
+    const rows = lines.map(item => {
+      const unit = item.unit_price === null || item.unit_price === undefined ? "valor sob consulta" : formatPrice(Number(item.unit_price));
+      const subtotal = item.subtotal === null || item.subtotal === undefined ? "sob consulta" : formatPrice(Number(item.subtotal));
+      return "• " + item.qty + "x " + item.name + "\n"
+        + "   Tamanho: " + item.size + " | Unitário: " + unit + "\n   Subtotal: " + subtotal;
+    });
+    const summary = recordedOrder ? {
+      qty:recordedOrder.item_count,
+      knownTotal:Number(recordedOrder.total),
+      missingPrices:recordedOrder.missing_prices
+    } : cartSummary();
+    const details = [
+      "*CARLA MODAS — PEDIDO* 🌷",
+      recordedOrder ? "Referência: CM-" + String(recordedOrder.number).padStart(5,"0") : "",
+      "",
+      customer.name ? "*Cliente:* " + customer.name : "",
+      ...rows,
+      "",
+      "*"+(summary.missingPrices ? "Subtotal com valores disponíveis" : "Total das peças")+":* " + formatPrice(summary.knownTotal),
+      summary.missingPrices ? "⚠️ " + summary.missingPrices + " peça(s) com valor sob consulta — total final a confirmar." : "",
+      "",
+      "*Recebimento:* " + ({entrega:"Consultar entrega",retirada:"Retirar na loja",combinar:"Combinar com a loja"}[customer.fulfillment]||"Combinar com a loja"),
+      customer.note ? "*Observações:* " + customer.note : "",
+      "",
+      "Olá! Gostaria de confirmar a disponibilidade e combinar o pagamento. Obrigada! 💕"
+    ];
+    return details.filter(line => line !== null && line !== undefined).join("\n").replace(/\n{3,}/g,"\n\n");
   }
 
   function configuredWhatsApp() {
@@ -317,8 +417,84 @@
   byId("bagButton").addEventListener("click", openBag);
   byId("closeBag").addEventListener("click", closeBag);
   byId("pageOverlay").addEventListener("click", closeBag);
-  byId("sendBag").addEventListener("click", () => bag.length && openWhatsApp(bagMessage()));
+  byId("sendBag").addEventListener("click", function () {
+    if (!bag.length) return;
+    checkoutMode = true;
+    updateCheckoutSteps();
+  });
+  byId("backToBag").addEventListener("click", function () {
+    checkoutMode = false;
+    updateCheckoutSteps();
+  });
+  byId("keepShopping").addEventListener("click", function () {
+    checkoutMode = false;
+    closeBag();
+    byId("colecao").scrollIntoView({behavior:"smooth",block:"start"});
+  });
+  byId("stickyCart").addEventListener("click", openBag);
   byId("copyBag").addEventListener("click", () => bag.length && copyText(bagMessage()));
+  byId("confirmWhatsApp").addEventListener("click", async function () {
+    if (!bag.length || sendingOrder) return;
+    const phone = configuredWhatsApp();
+    if (!phone) { showToast("WhatsApp da loja indisponível."); return; }
+    const customer = {
+      name:byId("customerName").value.trim().slice(0,100),
+      note:byId("orderNote").value.trim().slice(0,400),
+      fulfillment:byId("orderFulfillment").value
+    };
+    if (!pendingRequestKey) pendingRequestKey = crypto.randomUUID();
+    const isSmall = window.matchMedia("(max-width: 900px)").matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
+    // Janela aberta pelo clique: evita bloqueio de pop-up após consulta assíncrona.
+    const tab = isSmall ? null : window.open("", "_blank");
+    if (tab) {
+      try { tab.document.title="Preparando pedido";tab.document.body.innerHTML="<p style='font:16px system-ui;padding:30px'>Preparando seu pedido da Carla Modas…</p>"; } catch {}
+    }
+    const button = byId("confirmWhatsApp");
+    sendingOrder = true; button.disabled=true;button.textContent="Preparando pedido…";
+    let recordedOrder = null;
+    try {
+      const conf = window.CARLA_SUPABASE_CONFIG || {};
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 14000);
+      try {
+        const response = await fetch(conf.url.replace(/\/$/,"") + "/functions/v1/carla-order",{
+          method:"POST",
+          headers:{"Content-Type":"application/json","apikey":conf.publishableKey},
+          signal:controller.signal,
+          body:JSON.stringify({
+            request_key:pendingRequestKey,
+            customer_name:customer.name,customer_note:customer.note,fulfillment:customer.fulfillment,
+            items:bag.map(item=>({id:item.id,qty:item.qty,size:item.size}))
+          })
+        });
+        const json = await response.json();
+        if (!response.ok || !json.ok) throw Error(json.error || "Falha ao registrar");
+        recordedOrder = json.order;
+      }finally{clearTimeout(timeout);}
+    } catch(error) {
+      const message = String(error?.message || "Falha na conexão");
+      // Produtos esgotados ou quantidades inválidas não devem ser encaminhados.
+      if (/indisponível|estoque|tamanho|quantidade|peça não está/i.test(message)) {
+        if (tab && !tab.closed) tab.close();
+        showToast(message); sendingOrder=false;button.disabled=false;button.innerHTML='<svg><use href="#i-whatsapp"/></svg> Enviar pelo WhatsApp';
+        return;
+      }
+      showToast("Não foi possível registrar no histórico. O WhatsApp será aberto mesmo assim.");
+    } finally {
+      sendingOrder=false;
+      button.disabled=false;
+      button.innerHTML='<svg><use href="#i-whatsapp"/></svg> Enviar pelo WhatsApp';
+    }
+    const text = bagMessage(recordedOrder,customer);
+    const waUrl = "https://wa.me/" + phone + "?text=" + encodeURIComponent(text);
+    if (tab && !tab.closed) {
+      tab.location.href=waUrl;
+      checkoutMode=false;updateCheckoutSteps();closeBag();
+      showToast("WhatsApp aberto! Toque em enviar para concluir a conversa.");
+    } else {
+      window.location.assign(waUrl);
+    }
+  });
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape" && byId("bagDrawer").classList.contains("is-open")) closeBag();
   });
